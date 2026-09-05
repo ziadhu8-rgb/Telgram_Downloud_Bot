@@ -48,15 +48,17 @@ def get_video_info(url):
 def download_media(url, media_type='video'):
     # إعدادات مشتركة لجميع المنصات (بدون كوكيز)
     common_opts = {
-        'outtmpl': f'{DOWNLOAD_PATH}/%(title)s.%(ext)s',
-        'quiet': True,
-        'no_warnings': True,
-        'ignoreerrors': True,
-        'extract_flat': False,
-        'prefer_insecure': True,
-        'headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        },
+    'outtmpl': f'{DOWNLOAD_PATH}/%(title)s.%(ext)s',
+    'quiet': True,
+    'no_warnings': True,
+    'ignoreerrors': True,
+    'extract_flat': False,
+    'prefer_insecure': True,
+    'sleep_interval': 5,  # ينتظر 5 ثواني بين كل طلب
+    'max_sleep_interval': 10,  # أقصى انتظار
+    'headers': {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    },
     }
     
     if media_type == 'video':
