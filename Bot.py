@@ -32,7 +32,7 @@ def unshorten_url(url):
 
 def is_valid_url(url):
     """التحقق من صحة الرابط"""
-    platforms = r'(youtube|youtu\.be|tiktok|vm\.tiktok|vt\.tiktok|twitter|x|reddit|vimeo|dailymotion)'
+    platforms = r'(youtube|youtu\.be|tiktok|vm\.tiktok|vt\.tiktok|twitter|x|reddit|vimeo|dailymotion|soundcloud|on\.soundcloud\.com|bandcamp|audiomack)'
     return re.match(rf'^https?://(www\.|m\.)?{platforms}\.[a-z]{{2,}}/', url) is not None
 
 # ===================== دوال التحميل =====================
