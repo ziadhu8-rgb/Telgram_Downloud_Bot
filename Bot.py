@@ -177,8 +177,8 @@ async def process_download(update: Update, url: str, media_type: str):
         await msg.edit_text("❌ الرابط غير صحيح أو غير مدعوم!")
         return
     
-    duration_min = info['duration'] // 60
-    duration_sec = info['duration'] % 60
+    duration_min = int(info['duration']) // 60
+duration_sec = int(info['duration']) % 60
     
     preview = f"""
 📥 جاري تحميل:
