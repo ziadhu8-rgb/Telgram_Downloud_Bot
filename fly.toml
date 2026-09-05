@@ -10,7 +10,7 @@ primary_region = 'cdg'
   dockerfile = 'Dockerfile'
 
 [env]
-  BOT_TOKEN = 'توكن_البوت_بتاعك'
+  BOT_TOKEN = '8203080422:AAFYxonm0YHcrK6k3IDGcrkbrvAt3xBCGEg'
 
 [http_service]
   internal_port = 8080
