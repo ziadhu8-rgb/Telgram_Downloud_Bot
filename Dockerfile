@@ -1,24 +1,49 @@
-FROM python:3.10-slim
+# Stage 1: Build the Application
+# We use python:3.11 as the base for building and installing dependencies.
+FROM python:3.11 AS build
 
-# تثبيت FFmpeg
-RUN apt-get update && apt-get install -y \
-    ffmpeg \
-    && rm -rf /var/lib/apt/lists/*
+# Set the working directory inside the container
+WORKDIR /usr/src/app
 
-# إنشاء مجلد العمل
-WORKDIR /app
+# Install system dependencies if needed
+RUN apt-get update && apt-get install -y --no-install-recommends     build-essential     && rm -rf /var/lib/apt/lists/*
 
-# نسخ ملفات المتطلبات
-COPY requirements.txt .
+# Create a virtual environment
+RUN python -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
 
-# تنصيب المكتبات
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy requirements.txt if it exists (using wildcard to avoid build failure)
+COPY requirements.tx[t] ./requirements.txt
 
-# نسخ الكود
-COPY bot.py .
+# Install Python dependencies only if requirements.txt exists
+RUN pip install --upgrade pip &&     if [ -f requirements.txt ]; then         pip install -r requirements.txt;     fi
 
-# إنشاء مجلد للتحميلات
-RUN mkdir -p downloads
+# Copy the rest of the application source code
+COPY . .
 
-# أمر التشغيل
-CMD ["python", "bot.py"]
+# Stage 2: Create the Final Production Image
+# We use python:3.11 as the runtime image with all the necessary tools.
+FROM python:3.11
+
+# Set the working directory
+WORKDIR /usr/src/app
+
+# Copy the virtual environment from the build stage
+COPY --from=build /opt/venv /opt/venv
+
+# Copy the application code
+COPY --from=build /usr/src/app .
+
+# Set the virtual environment as the active Python environment
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Create a non-root user to run the application
+RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /usr/src/app
+USER appuser
+
+# Expose the port your app runs on
+ENV PORT=8080
+EXPOSE $PORT
+
+# Define the command to start your application
+CMD ["python", "app.py"]
