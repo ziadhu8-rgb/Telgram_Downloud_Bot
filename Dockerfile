@@ -1,32 +1,33 @@
 # Stage 1: Build the Application
-# We use python:3.11 as the base for building and installing dependencies.
 FROM python:3.11 AS build
 
-# Set the working directory inside the container
 WORKDIR /usr/src/app
 
-# Install system dependencies if needed
-RUN apt-get update && apt-get install -y --no-install-recommends     build-essential     && rm -rf /var/lib/apt/lists/*
+# تثبيت system dependencies (بما فيها ffmpeg)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create a virtual environment
 RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
-# Copy requirements.txt if it exists (using wildcard to avoid build failure)
+# Copy requirements.txt
 COPY requirements.tx[t] ./requirements.txt
 
-# Install Python dependencies only if requirements.txt exists
-RUN pip install --upgrade pip &&     if [ -f requirements.txt ]; then         pip install -r requirements.txt;     fi
+# Install Python dependencies
+RUN pip install --upgrade pip && \
+    if [ -f requirements.txt ]; then \
+        pip install -r requirements.txt; \
+    fi
 
 # Copy the rest of the application source code
 COPY . .
 
 # Stage 2: Create the Final Production Image
-# We use python:3.11 as the runtime image with all the necessary tools.
 FROM python:3.11
 
-
-# Set the working directory
 WORKDIR /usr/src/app
 
 # Copy the virtual environment from the build stage
@@ -34,6 +35,10 @@ COPY --from=build /opt/venv /opt/venv
 
 # Copy the application code
 COPY --from=build /usr/src/app .
+
+# Copy ffmpeg from build stage
+COPY --from=build /usr/bin/ffmpeg /usr/bin/ffmpeg
+COPY --from=build /usr/bin/ffprobe /usr/bin/ffprobe
 
 # Set the virtual environment as the active Python environment
 ENV PATH="/opt/venv/bin:$PATH"
