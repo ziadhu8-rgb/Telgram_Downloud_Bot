@@ -22,28 +22,37 @@ logger = logging.getLogger(__name__)
 
 # ===================== دوال التحميل =====================
 def get_video_info(url):
-    ydl_opts = {'quiet': True, 'no_warnings': True}
+    ydl_opts = {
+        'quiet': True,
+        'no_warnings': True,
+        'ignoreerrors': True,
+    }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         try:
             info = ydl.extract_info(url, download=False)
+            if info is None:
+                return None
             return {
                 'title': info.get('title', 'بدون عنوان'),
                 'duration': info.get('duration', 0),
                 'uploader': info.get('uploader', 'مجهول'),
             }
-        except:
+        except Exception as e:
+            logger.error(f"خطأ في جلب المعلومات: {e}")
             return None
 
 def download_media(url, media_type='video'):
     if media_type == 'video':
         ydl_opts = {
             'outtmpl': f'{DOWNLOAD_PATH}/%(title)s.%(ext)s',
-            'format': 'bestvideo[height<=1080]+bestaudio/best[height<=1080]',
+            'format': 'bestvideo+bestaudio/best',
             'merge_output_format': 'mp4',
             'quiet': True,
             'no_warnings': True,
+            'ignoreerrors': True,
+            'extract_flat': False,
         }
-    else:
+    else:  # audio
         ydl_opts = {
             'outtmpl': f'{DOWNLOAD_PATH}/%(title)s.%(ext)s',
             'format': 'bestaudio/best',
@@ -54,22 +63,38 @@ def download_media(url, media_type='video'):
             }],
             'quiet': True,
             'no_warnings': True,
+            'ignoreerrors': True,
+            'extract_flat': False,
         }
     
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(url, download=True)
+            if info is None:
+                return None, "❌ الرابط غير مدعوم أو تالف"
+            
             filename = ydl.prepare_filename(info)
             if media_type == 'audio':
                 filename = filename.rsplit('.', 1)[0] + '.mp3'
             
             if os.path.exists(filename):
-                if os.path.getsize(filename) > MAX_FILE_SIZE:
+                file_size = os.path.getsize(filename)
+                if file_size > MAX_FILE_SIZE:
                     os.remove(filename)
-                    return None, "⚠️ الملف أكبر من 50 ميجا"
+                    return None, f"⚠️ الملف كبير جداً ({file_size // (1024*1024)} ميجا - الحد 50 ميجا)"
                 return filename, None
+            
+            # محاولة إيجاد الملف باسم مختلف
+            for f in os.listdir(DOWNLOAD_PATH):
+                if f.endswith('.mp4') or f.endswith('.mp3'):
+                    filepath = os.path.join(DOWNLOAD_PATH, f)
+                    if os.path.getsize(filepath) <= MAX_FILE_SIZE:
+                        return filepath, None
+            
             return None, "❌ فشل التحميل"
+            
     except Exception as e:
+        logger.error(f"خطأ في التحميل: {e}")
         return None, f"❌ خطأ: {str(e)[:100]}"
 
 # ===================== أوامر البوت =====================
@@ -86,7 +111,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"🎬 **مرحباً بك {first_name}!**\n\n"
         "أنا بوت لتحميل الفيديوهات من:\n"
-        "• يوتيوب 📺\n• انستجرام 📸\n• فيسبوك 📘\n• تيك توك 🎵\n\n"
+        "• يوتيوب 📺\n• انستجرام 📸\n• فيسبوك 📘\n• تيك توك 🎵\n• تويتر/X 🐦\n• ريديت 🤖\n\n"
         "**الأوامر المتاحة:**\n"
         "/video [الرابط] - تحميل فيديو\n"
         "/audio [الرابط] - تحميل الصوت فقط\n"
@@ -102,8 +127,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "`/video https://youtube.com/watch?v=...`\n\n"
         "2️⃣ تحميل صوت فقط:\n"
         "`/audio https://youtube.com/watch?v=...`\n\n"
-        "🌐 المنصات المدعومة:\n"
-        "YouTube • Instagram • Facebook • TikTok",
+        "🌐 **المنصات المدعومة:**\n"
+        "✅ YouTube\n✅ Instagram\n✅ Facebook\n✅ TikTok\n✅ Twitter/X\n✅ Reddit\n✅ Vimeo\n✅ Dailymotion\n\n"
+        "⚠️ **الحد الأقصى:** 50 ميجا",
         parse_mode='Markdown'
     )
 
@@ -122,11 +148,26 @@ async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def process_download(update: Update, url: str, media_type: str):
     msg = await update.message.reply_text("⏳ جاري التحميل...")
     
+    # جلب المعلومات
     info = get_video_info(url)
     if not info:
         await msg.edit_text("❌ الرابط غير صحيح أو غير مدعوم!")
         return
     
+    # عرض معلومات الفيديو
+    duration_min = info['duration'] // 60
+    duration_sec = info['duration'] % 60
+    
+    preview = f"""
+📥 **جاري تحميل:**
+📌 **العنوان:** {info['title'][:50]}...
+👤 **القناة:** {info['uploader']}
+⏱️ **المدة:** {duration_min}:{duration_sec:02d}
+🎯 **النوع:** {"فيديو" if media_type == 'video' else "صوت فقط"}
+    """
+    await msg.edit_text(preview, parse_mode='Markdown')
+    
+    # التحميل
     filename, error = download_media(url, media_type)
     if error:
         await msg.edit_text(f"❌ {error}")
@@ -137,15 +178,26 @@ async def process_download(update: Update, url: str, media_type: str):
     try:
         with open(filename, 'rb') as file:
             if media_type == 'video':
-                await update.message.reply_video(video=file, caption=f"🎬 {info['title'][:50]}")
+                await update.message.reply_video(
+                    video=file,
+                    caption=f"🎬 **{info['title'][:50]}**\n👤 {info['uploader']}",
+                    supports_streaming=True,
+                    parse_mode='Markdown'
+                )
             else:
-                await update.message.reply_audio(audio=file, title=info['title'][:50])
+                await update.message.reply_audio(
+                    audio=file,
+                    title=info['title'][:50],
+                    performer=info['uploader'],
+                    duration=info['duration']
+                )
         await msg.delete()
     except Exception as e:
         await msg.edit_text(f"❌ خطأ في الرفع: {str(e)[:100]}")
     finally:
         if os.path.exists(filename):
             os.remove(filename)
+            logger.info(f"تم حذف الملف: {filename}")
 
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -165,8 +217,15 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     url = update.message.text
-    if not re.match(r'^https?://(www\.)?(youtube|instagram|facebook|tiktok)\.[a-z]{2,}/', url):
-        await update.message.reply_text("❌ الرجاء إرسال رابط صحيح")
+    
+    # دعم كل المنصات
+    platforms = r'(youtube|youtu\.be|instagram|facebook|tiktok|twitter|x|reddit|vimeo|dailymotion)'
+    if not re.match(rf'^https?://(www\.)?{platforms}\.[a-z]{{2,}}/', url):
+        await update.message.reply_text(
+            "❌ **الرجاء إرسال رابط صحيح**\n\n"
+            "المنصات المدعومة:\n"
+            "• YouTube\n• Instagram\n• Facebook\n• TikTok\n• Twitter/X\n• Reddit"
+        )
         return
     
     action = context.user_data['action']
