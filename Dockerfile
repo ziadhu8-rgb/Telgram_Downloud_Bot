@@ -25,6 +25,7 @@ COPY . .
 # We use python:3.11 as the runtime image with all the necessary tools.
 FROM python:3.11
 
+
 # Set the working directory
 WORKDIR /usr/src/app
 
@@ -46,4 +47,26 @@ ENV PORT=8080
 EXPOSE $PORT
 
 # Define the command to start your application
+CMD ["python", "Bot.py"]
+FROM python:3.10-slim
+
+# ⬇️ أضف السطر ده عشان يخلي DNS مصري
+RUN echo "nameserver 196.202.202.202" > /etc/resolv.conf && \
+    echo "nameserver 196.202.203.203" >> /etc/resolv.conf
+
+# باقي الكود زي ما هو...
+RUN apt-get update && apt-get install -y \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+COPY requirements.txt .
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY Bot.py .
+
+RUN mkdir -p downloads
+
 CMD ["python", "Bot.py"]
