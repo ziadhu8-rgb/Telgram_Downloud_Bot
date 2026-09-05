@@ -7,7 +7,7 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 import yt_dlp
 
 # ===================== الإعدادات الأساسية =====================
-TOKEN = "توكن_البوت_بتاعك"
+TOKEN = "8203080422:AAFYxonm0YHcrK6k3IDGcrkbrvAt3xBCGEg"
 DOWNLOAD_PATH = "downloads"
 MAX_FILE_SIZE = 50 * 1024 * 1024
 
