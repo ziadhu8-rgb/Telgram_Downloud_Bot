@@ -63,18 +63,18 @@ def get_video_info(url):
 def download_media(url, media_type='video'):
     # إعدادات مشتركة لجميع المنصات
     common_opts = {
-    'outtmpl': f'{DOWNLOAD_PATH}/%(title)s.%(ext)s',
-    'quiet': True,
-    'no_warnings': True,
-    'ignoreerrors': True,
-    'extract_flat': False,
-    'prefer_insecure': True,
-    'sleep_interval': 5,
-    'max_sleep_interval': 10,
-    'proxy': 'http://130.110.103.245:3128',  # الـ Proxy المصري السريع
-    'headers': {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    },
+        'outtmpl': f'{DOWNLOAD_PATH}/%(title)s.%(ext)s',
+        'quiet': True,
+        'no_warnings': True,
+        'ignoreerrors': True,
+        'extract_flat': False,
+        'prefer_insecure': True,
+        'sleep_interval': 5,
+        'max_sleep_interval': 10,
+        'proxy': 'http://130.110.103.245:3128',
+        'headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
     }
     
     if media_type == 'video':
@@ -124,6 +124,54 @@ def download_media(url, media_type='video'):
         return None, f"❌ خطأ: {str(e)[:100]}"
 
 # ===================== أوامر البوت =====================
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user = update.effective_user
+    first_name = user.first_name if user.first_name else "صديقي"
+    
+    keyboard = [
+        [InlineKeyboardButton("📹 تحميل فيديو", callback_data='video')],
+        [InlineKeyboardButton("🎵 تحميل صوت فقط", callback_data='audio')],
+        [InlineKeyboardButton("❓ مساعدة", callback_data='help')]
+    ]
+    
+    await update.message.reply_text(
+        f"🎬 مرحباً بك {first_name}!\n\n"
+        "أنا بوت لتحميل الفيديوهات من:\n"
+        "• يوتيوب 📺\n• تيك توك 🎵\n• تويتر/X 🐦\n• ريديت 🤖\n"
+        "• SoundCloud 🎧\n\n"
+        "الأوامر المتاحة:\n"
+        "/video [الرابط] - تحميل فيديو\n"
+        "/audio [الرابط] - تحميل الصوت فقط\n"
+        "/help - عرض المساعدة",
+        reply_markup=InlineKeyboardMarkup(keyboard)
+    )
+
+async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "📖 دليل الاستخدام:\n\n"
+        "1️⃣ تحميل فيديو:\n"
+        "/video https://youtube.com/watch?v=...\n\n"
+        "2️⃣ تحميل صوت فقط:\n"
+        "/audio https://youtube.com/watch?v=...\n\n"
+        "🌐 المنصات المدعومة:\n"
+        "✅ YouTube\n✅ TikTok\n✅ Twitter/X\n✅ Reddit\n"
+        "✅ Vimeo\n✅ Dailymotion\n✅ SoundCloud\n"
+        "✅ Bandcamp\n✅ Audiomack\n\n"
+        "⚠️ الحد الأقصى: 50 ميجا"
+    )
+
+async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("⚠️ أرسل الرابط بعد الأمر:\n/video [الرابط]")
+        return
+    await process_download(update, context.args[0], 'video')
+
+async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if not context.args:
+        await update.message.reply_text("⚠️ أرسل الرابط بعد الأمر:\n/audio [الرابط]")
+        return
+    await process_download(update, context.args[0], 'audio')
+
 async def process_download(update: Update, url: str, media_type: str):
     msg = await update.message.reply_text("⏳ جاري التحميل...")
     
@@ -175,68 +223,6 @@ async def process_download(update: Update, url: str, media_type: str):
             os.remove(filename)
             logger.info(f"تم حذف الملف: {filename}")
 
-async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await update.message.reply_text("⚠️ أرسل الرابط بعد الأمر:\n/video [الرابط]")
-        return
-    await process_download(update, context.args[0], 'video')
-
-async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    if not context.args:
-        await update.message.reply_text("⚠️ أرسل الرابط بعد الأمر:\n/audio [الرابط]")
-        return
-    await process_download(update, context.args[0], 'audio')
-
-async def process_download(update: Update, url: str, media_type: str):
-    msg = await update.message.reply_text("⏳ جاري التحميل...")
-    
-    info = get_video_info(url)
-    if not info:
-        await msg.edit_text("❌ الرابط غير صحيح أو غير مدعوم!")
-        return
-    
-    duration_min = int(info['duration']) // 60
-duration_sec = int(info['duration']) % 60
-    
-    preview = f"""
-📥 جاري تحميل:
-📌 العنوان: {info['title'][:50]}...
-👤 القناة: {info['uploader']}
-⏱️ المدة: {duration_min}:{duration_sec:02d}
-🎯 النوع: {"فيديو" if media_type == 'video' else "صوت فقط"}
-    """
-    await msg.edit_text(preview)
-    
-    filename, error = download_media(url, media_type)
-    if error:
-        await msg.edit_text(f"❌ {error}")
-        return
-    
-    await msg.edit_text("📤 جاري الرفع إلى تليجرام...")
-    
-    try:
-        with open(filename, 'rb') as file:
-            if media_type == 'video':
-                await update.message.reply_video(
-                    video=file,
-                    caption=f"🎬 {info['title'][:50]}\n👤 {info['uploader']}",
-                    supports_streaming=True
-                )
-            else:
-                await update.message.reply_audio(
-                    audio=file,
-                    title=info['title'][:50],
-                    performer=info['uploader'],
-                    duration=info['duration']
-                )
-        await msg.delete()
-    except Exception as e:
-        await msg.edit_text(f"❌ خطأ في الرفع: {str(e)[:100]}")
-    finally:
-        if os.path.exists(filename):
-            os.remove(filename)
-            logger.info(f"تم حذف الملف: {filename}")
-
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
@@ -254,13 +240,14 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if 'action' not in context.user_data:
         return
     
-    url = unshorten_url(update.message.text)  # فك الضغط عن الرابط
+    url = unshorten_url(update.message.text)
     
     if not is_valid_url(url):
         await update.message.reply_text(
             "❌ الرجاء إرسال رابط صحيح\n\n"
             "المنصات المدعومة:\n"
-            "• YouTube\n• TikTok\n• Twitter/X\n• Reddit"
+            "• YouTube\n• TikTok\n• Twitter/X\n• Reddit\n"
+            "• SoundCloud\n• Vimeo\n• Dailymotion"
         )
         return
     
