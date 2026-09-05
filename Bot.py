@@ -63,18 +63,18 @@ def get_video_info(url):
 def download_media(url, media_type='video'):
     # إعدادات مشتركة لجميع المنصات
     common_opts = {
-        'outtmpl': f'{DOWNLOAD_PATH}/%(title)s.%(ext)s',
-        'quiet': True,
-        'no_warnings': True,
-        'ignoreerrors': True,
-        'extract_flat': False,
-        'prefer_insecure': True,
-        'sleep_interval': 5,
-        'max_sleep_interval': 10,
-        #'proxy': 'http://197.164.101.10:1981',
-        'headers': {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-        },
+    'outtmpl': f'{DOWNLOAD_PATH}/%(title)s.%(ext)s',
+    'quiet': True,
+    'no_warnings': True,
+    'ignoreerrors': True,
+    'extract_flat': False,
+    'prefer_insecure': True,
+    'sleep_interval': 5,
+    'max_sleep_interval': 10,
+    'proxy': 'http://196.204.3.21:1981',  # الـ Proxy المصري السريع
+    'headers': {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    },
     }
     
     if media_type == 'video':
