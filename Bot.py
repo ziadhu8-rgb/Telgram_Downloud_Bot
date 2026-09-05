@@ -5,6 +5,7 @@ from datetime import datetime
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, ContextTypes, MessageHandler, filters
 import yt_dlp
+import requests
 
 # ===================== الإعدادات الأساسية =====================
 TOKEN = "8203080422:AAFYxonm0YHcrK6k3IDGcrkbrvAt3xBCGEg"
@@ -19,6 +20,20 @@ logging.basicConfig(
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
+
+# ===================== دوال مساعدة =====================
+def unshorten_url(url):
+    """فك الضغط عن الروابط المختصرة"""
+    try:
+        response = requests.get(url, allow_redirects=True, timeout=10)
+        return response.url
+    except:
+        return url
+
+def is_valid_url(url):
+    """التحقق من صحة الرابط"""
+    platforms = r'(youtube|youtu\.be|tiktok|vm\.tiktok|vt\.tiktok|twitter|x|reddit|vimeo|dailymotion)'
+    return re.match(rf'^https?://(www\.|m\.)?{platforms}\.[a-z]{{2,}}/', url) is not None
 
 # ===================== دوال التحميل =====================
 def get_video_info(url):
@@ -46,28 +61,29 @@ def get_video_info(url):
             return None
 
 def download_media(url, media_type='video'):
-    # إعدادات مشتركة لجميع المنصات (بدون كوكيز)
+    # إعدادات مشتركة لجميع المنصات
     common_opts = {
-    'outtmpl': f'{DOWNLOAD_PATH}/%(title)s.%(ext)s',
-    'quiet': True,
-    'no_warnings': True,
-    'ignoreerrors': True,
-    'extract_flat': False,
-    'prefer_insecure': True,
-    'sleep_interval': 5,
-    'max_sleep_interval': 10,
-    'proxy': 'http://196.204.80.105:1981',  # <--- حط الـ Proxy هنا
-    'headers': {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
-    },
+        'outtmpl': f'{DOWNLOAD_PATH}/%(title)s.%(ext)s',
+        'quiet': True,
+        'no_warnings': True,
+        'ignoreerrors': True,
+        'extract_flat': False,
+        'prefer_insecure': True,
+        'sleep_interval': 5,
+        'max_sleep_interval': 10,
+        'proxy': 'http://196.204.80.105:1981',
+        'headers': {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        },
     }
+    
     if media_type == 'video':
         ydl_opts = {
             **common_opts,
             'format': 'bestvideo+bestaudio/best',
             'merge_output_format': 'mp4',
         }
-    else:  # audio
+    else:
         ydl_opts = {
             **common_opts,
             'format': 'bestaudio/best',
@@ -95,7 +111,6 @@ def download_media(url, media_type='video'):
                     return None, f"⚠️ الملف كبير جداً ({file_size // (1024*1024)} ميجا - الحد 50 ميجا)"
                 return filename, None
             
-            # محاولة إيجاد الملف باسم مختلف
             for f in os.listdir(DOWNLOAD_PATH):
                 if f.endswith('.mp4') or f.endswith('.mp3'):
                     filepath = os.path.join(DOWNLOAD_PATH, f)
@@ -120,65 +135,60 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     ]
     
     await update.message.reply_text(
-        f"🎬 **مرحباً بك {first_name}!**\n\n"
+        f"🎬 مرحباً بك {first_name}!\n\n"
         "أنا بوت لتحميل الفيديوهات من:\n"
         "• يوتيوب 📺\n• تيك توك 🎵\n• تويتر/X 🐦\n• ريديت 🤖\n\n"
-        "**الأوامر المتاحة:**\n"
+        "الأوامر المتاحة:\n"
         "/video [الرابط] - تحميل فيديو\n"
         "/audio [الرابط] - تحميل الصوت فقط\n"
         "/help - عرض المساعدة",
-        reply_markup=InlineKeyboardMarkup(keyboard),
-        parse_mode='Markdown'
+        reply_markup=InlineKeyboardMarkup(keyboard)
     )
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "📖 **دليل الاستخدام:**\n\n"
+        "📖 دليل الاستخدام:\n\n"
         "1️⃣ تحميل فيديو:\n"
-        "`/video https://youtube.com/watch?v=...`\n\n"
+        "/video https://youtube.com/watch?v=...\n\n"
         "2️⃣ تحميل صوت فقط:\n"
-        "`/audio https://youtube.com/watch?v=...`\n\n"
-        "🌐 **المنصات المدعومة:**\n"
+        "/audio https://youtube.com/watch?v=...\n\n"
+        "🌐 المنصات المدعومة:\n"
         "✅ YouTube\n✅ TikTok\n✅ Twitter/X\n✅ Reddit\n✅ Vimeo\n✅ Dailymotion\n\n"
-        "⚠️ **الحد الأقصى:** 50 ميجا",
-        parse_mode='Markdown'
+        "⚠️ الحد الأقصى: 50 ميجا"
     )
 
 async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("⚠️ أرسل الرابط بعد الأمر:\n`/video [الرابط]`", parse_mode='Markdown')
+        await update.message.reply_text("⚠️ أرسل الرابط بعد الأمر:\n/video [الرابط]")
         return
     await process_download(update, context.args[0], 'video')
 
 async def handle_audio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
-        await update.message.reply_text("⚠️ أرسل الرابط بعد الأمر:\n`/audio [الرابط]`", parse_mode='Markdown')
+        await update.message.reply_text("⚠️ أرسل الرابط بعد الأمر:\n/audio [الرابط]")
         return
     await process_download(update, context.args[0], 'audio')
 
 async def process_download(update: Update, url: str, media_type: str):
     msg = await update.message.reply_text("⏳ جاري التحميل...")
     
-    # جلب المعلومات
     info = get_video_info(url)
     if not info:
         await msg.edit_text("❌ الرابط غير صحيح أو غير مدعوم!")
         return
     
-    # عرض معلومات الفيديو
     duration_min = info['duration'] // 60
     duration_sec = info['duration'] % 60
     
     preview = f"""
-📥 **جاري تحميل:**
-📌 **العنوان:** {info['title'][:50]}...
-👤 **القناة:** {info['uploader']}
-⏱️ **المدة:** {duration_min}:{duration_sec:02d}
-🎯 **النوع:** {"فيديو" if media_type == 'video' else "صوت فقط"}
+📥 جاري تحميل:
+📌 العنوان: {info['title'][:50]}...
+👤 القناة: {info['uploader']}
+⏱️ المدة: {duration_min}:{duration_sec:02d}
+🎯 النوع: {"فيديو" if media_type == 'video' else "صوت فقط"}
     """
-    await msg.edit_text(preview, parse_mode='Markdown')
+    await msg.edit_text(preview)
     
-    # التحميل
     filename, error = download_media(url, media_type)
     if error:
         await msg.edit_text(f"❌ {error}")
@@ -191,9 +201,8 @@ async def process_download(update: Update, url: str, media_type: str):
             if media_type == 'video':
                 await update.message.reply_video(
                     video=file,
-                    caption=f"🎬 **{info['title'][:50]}**\n👤 {info['uploader']}",
-                    supports_streaming=True,
-                    parse_mode='Markdown'
+                    caption=f"🎬 {info['title'][:50]}\n👤 {info['uploader']}",
+                    supports_streaming=True
                 )
             else:
                 await update.message.reply_audio(
@@ -227,13 +236,11 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if 'action' not in context.user_data:
         return
     
-    url = update.message.text
+    url = unshorten_url(update.message.text)  # فك الضغط عن الرابط
     
-    # دعم المنصات (بدون انستجرام وفيسبوك)
-    platforms = r'(youtube|youtu\.be|tiktok|vm\.tiktok|vt\.tiktok|twitter|x|reddit|vimeo|dailymotion)'
-    if not re.match(rf'^https?://(www\.)?{platforms}\.[a-z]{{2,}}/', url):
+    if not is_valid_url(url):
         await update.message.reply_text(
-            "❌ **الرجاء إرسال رابط صحيح**\n\n"
+            "❌ الرجاء إرسال رابط صحيح\n\n"
             "المنصات المدعومة:\n"
             "• YouTube\n• TikTok\n• Twitter/X\n• Reddit"
         )
