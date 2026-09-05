@@ -228,7 +228,7 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     url = update.message.text
     
     # دعم المنصات (بدون انستجرام وفيسبوك)
-    platforms = r'(youtube|youtu\.be|tiktok|twitter|x|reddit|vimeo|dailymotion)'
+    platforms = r'(youtube|youtu\.be|tiktok|vm\.tiktok|vt\.tiktok|twitter|x|reddit|vimeo|dailymotion)'
     if not re.match(rf'^https?://(www\.)?{platforms}\.[a-z]{{2,}}/', url):
         await update.message.reply_text(
             "❌ **الرجاء إرسال رابط صحيح**\n\n"
