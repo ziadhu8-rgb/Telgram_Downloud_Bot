@@ -124,38 +124,56 @@ def download_media(url, media_type='video'):
         return None, f"❌ خطأ: {str(e)[:100]}"
 
 # ===================== أوامر البوت =====================
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user = update.effective_user
-    first_name = user.first_name if user.first_name else "صديقي"
+async def process_download(update: Update, url: str, media_type: str):
+    msg = await update.message.reply_text("⏳ جاري التحميل...")
     
-    keyboard = [
-        [InlineKeyboardButton("📹 تحميل فيديو", callback_data='video')],
-        [InlineKeyboardButton("🎵 تحميل صوت فقط", callback_data='audio')],
-        [InlineKeyboardButton("❓ مساعدة", callback_data='help')]
-    ]
+    info = get_video_info(url)
+    if not info:
+        await msg.edit_text("❌ الرابط غير صحيح أو غير مدعوم!")
+        return
     
-    await update.message.reply_text(
-        f"🎬 مرحباً بك {first_name}!\n\n"
-        "أنا بوت لتحميل الفيديوهات من:\n"
-        "• يوتيوب 📺\n• تيك توك 🎵\n• تويتر/X 🐦\n• ريديت 🤖\n\n"
-        "الأوامر المتاحة:\n"
-        "/video [الرابط] - تحميل فيديو\n"
-        "/audio [الرابط] - تحميل الصوت فقط\n"
-        "/help - عرض المساعدة",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(
-        "📖 دليل الاستخدام:\n\n"
-        "1️⃣ تحميل فيديو:\n"
-        "/video https://youtube.com/watch?v=...\n\n"
-        "2️⃣ تحميل صوت فقط:\n"
-        "/audio https://youtube.com/watch?v=...\n\n"
-        "🌐 المنصات المدعومة:\n"
-        "✅ YouTube\n✅ TikTok\n✅ Twitter/X\n✅ Reddit\n✅ Vimeo\n✅ Dailymotion\n\n"
-        "⚠️ الحد الأقصى: 50 ميجا"
-    )
+    duration = int(info['duration']) if info['duration'] else 0
+    duration_min = duration // 60
+    duration_sec = duration % 60
+    
+    preview = f"""
+📥 جاري تحميل:
+📌 العنوان: {info['title'][:50]}...
+👤 القناة: {info['uploader']}
+⏱️ المدة: {duration_min}:{duration_sec:02d}
+🎯 النوع: {"فيديو" if media_type == 'video' else "صوت فقط"}
+    """
+    await msg.edit_text(preview)
+    
+    filename, error = download_media(url, media_type)
+    if error:
+        await msg.edit_text(f"❌ {error}")
+        return
+    
+    await msg.edit_text("📤 جاري الرفع إلى تليجرام...")
+    
+    try:
+        with open(filename, 'rb') as file:
+            if media_type == 'video':
+                await update.message.reply_video(
+                    video=file,
+                    caption=f"🎬 {info['title'][:50]}\n👤 {info['uploader']}",
+                    supports_streaming=True
+                )
+            else:
+                await update.message.reply_audio(
+                    audio=file,
+                    title=info['title'][:50],
+                    performer=info['uploader'],
+                    duration=duration
+                )
+        await msg.delete()
+    except Exception as e:
+        await msg.edit_text(f"❌ خطأ في الرفع: {str(e)[:100]}")
+    finally:
+        if os.path.exists(filename):
+            os.remove(filename)
+            logger.info(f"تم حذف الملف: {filename}")
 
 async def handle_video(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not context.args:
