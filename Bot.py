@@ -71,7 +71,7 @@ def download_media(url, media_type='video'):
     'prefer_insecure': True,
     'sleep_interval': 5,
     'max_sleep_interval': 10,
-    'proxy': 'http://196.204.3.21:1981',  # الـ Proxy المصري السريع
+    #'proxy': 'http://196.204.3.21:1981',  # الـ Proxy المصري السريع
     'headers': {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
     },
