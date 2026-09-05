@@ -46,7 +46,7 @@ def get_video_info(url):
             return None
 
 def download_media(url, media_type='video'):
-    # إعدادات مشتركة لجميع المنصات
+    # إعدادات مشتركة لجميع المنصات (بدون كوكيز)
     common_opts = {
         'outtmpl': f'{DOWNLOAD_PATH}/%(title)s.%(ext)s',
         'quiet': True,
@@ -57,8 +57,6 @@ def download_media(url, media_type='video'):
         'headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         },
-        # إضافة Cookies لو موجودة (لانستجرام وفيسبوك)
-        'cookiefile': 'cookies.txt' if os.path.exists('cookies.txt') else None,
     }
     
     if media_type == 'video':
@@ -122,7 +120,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         f"🎬 **مرحباً بك {first_name}!**\n\n"
         "أنا بوت لتحميل الفيديوهات من:\n"
-        "• يوتيوب 📺\n• انستجرام 📸\n• فيسبوك 📘\n• تيك توك 🎵\n• تويتر/X 🐦\n• ريديت 🤖\n\n"
+        "• يوتيوب 📺\n• تيك توك 🎵\n• تويتر/X 🐦\n• ريديت 🤖\n\n"
         "**الأوامر المتاحة:**\n"
         "/video [الرابط] - تحميل فيديو\n"
         "/audio [الرابط] - تحميل الصوت فقط\n"
@@ -139,7 +137,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "2️⃣ تحميل صوت فقط:\n"
         "`/audio https://youtube.com/watch?v=...`\n\n"
         "🌐 **المنصات المدعومة:**\n"
-        "✅ YouTube\n✅ Instagram\n✅ Facebook\n✅ TikTok\n✅ Twitter/X\n✅ Reddit\n✅ Vimeo\n✅ Dailymotion\n\n"
+        "✅ YouTube\n✅ TikTok\n✅ Twitter/X\n✅ Reddit\n✅ Vimeo\n✅ Dailymotion\n\n"
         "⚠️ **الحد الأقصى:** 50 ميجا",
         parse_mode='Markdown'
     )
@@ -229,13 +227,13 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     url = update.message.text
     
-    # دعم كل المنصات
-    platforms = r'(youtube|youtu\.be|instagram|facebook|tiktok|twitter|x|reddit|vimeo|dailymotion)'
+    # دعم المنصات (بدون انستجرام وفيسبوك)
+    platforms = r'(youtube|youtu\.be|tiktok|twitter|x|reddit|vimeo|dailymotion)'
     if not re.match(rf'^https?://(www\.)?{platforms}\.[a-z]{{2,}}/', url):
         await update.message.reply_text(
             "❌ **الرجاء إرسال رابط صحيح**\n\n"
             "المنصات المدعومة:\n"
-            "• YouTube\n• Instagram\n• Facebook\n• TikTok\n• Twitter/X\n• Reddit"
+            "• YouTube\n• TikTok\n• Twitter/X\n• Reddit"
         )
         return
     
