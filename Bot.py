@@ -185,6 +185,16 @@ async def process_download(update: Update, url: str, media_type: str):
     info = get_video_info(url)
     if not info:
         await msg.edit_text("❌ الرابط غير صحيح أو غير مدعوم!")
+        # عرض الأزرار مرة أخرى بعد الخطأ
+        keyboard = [
+            [InlineKeyboardButton("📹 تحميل فيديو", callback_data='video')],
+            [InlineKeyboardButton("🎵 تحميل صوت فقط", callback_data='audio')],
+            [InlineKeyboardButton("❓ مساعدة", callback_data='help')]
+        ]
+        await update.message.reply_text(
+            "🔄 عايز تحمل حاجة تانية؟",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
         return
     
     duration = int(info['duration']) if info['duration'] else 0
@@ -203,6 +213,16 @@ async def process_download(update: Update, url: str, media_type: str):
     filename, error = download_media(url, media_type)
     if error:
         await msg.edit_text(f"❌ {error}")
+        # عرض الأزرار مرة أخرى بعد الخطأ
+        keyboard = [
+            [InlineKeyboardButton("📹 تحميل فيديو", callback_data='video')],
+            [InlineKeyboardButton("🎵 تحميل صوت فقط", callback_data='audio')],
+            [InlineKeyboardButton("❓ مساعدة", callback_data='help')]
+        ]
+        await update.message.reply_text(
+            "🔄 عايز تحمل حاجة تانية؟",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
         return
     
     await msg.edit_text("📤 جاري الرفع إلى تليجرام...")
@@ -223,8 +243,30 @@ async def process_download(update: Update, url: str, media_type: str):
                     duration=duration
                 )
         await msg.delete()
+        
+        # ✅ عرض الأزرار بعد التحميل الناجح
+        keyboard = [
+            [InlineKeyboardButton("📹 تحميل فيديو", callback_data='video')],
+            [InlineKeyboardButton("🎵 تحميل صوت فقط", callback_data='audio')],
+            [InlineKeyboardButton("❓ مساعدة", callback_data='help')]
+        ]
+        await update.message.reply_text(
+            "✅ تم التحميل! 🎉\n\n🔄 عايز تحمل حاجة تانية؟",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
+        
     except Exception as e:
         await msg.edit_text(f"❌ خطأ في الرفع: {str(e)[:100]}")
+        # عرض الأزرار بعد الخطأ
+        keyboard = [
+            [InlineKeyboardButton("📹 تحميل فيديو", callback_data='video')],
+            [InlineKeyboardButton("🎵 تحميل صوت فقط", callback_data='audio')],
+            [InlineKeyboardButton("❓ مساعدة", callback_data='help')]
+        ]
+        await update.message.reply_text(
+            "🔄 عايز تحمل حاجة تانية؟",
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
     finally:
         if os.path.exists(filename):
             os.remove(filename)
