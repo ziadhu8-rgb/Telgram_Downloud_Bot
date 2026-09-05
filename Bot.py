@@ -121,7 +121,14 @@ def download_media(url, media_type='video'):
             
     except Exception as e:
         logger.error(f"خطأ في التحميل: {e}")
-        return None, f"❌ خطأ: {str(e)[:100]}"
+        error_msg = str(e)
+        # كشف DRM
+        if "DRM" in error_msg or "drm" in error_msg.lower():
+            return None, "🔒 هذا المحتوى محمي بـ DRM ولا يمكن تحميله"
+        # كشف عدم توفر ffmpeg
+        if "ffmpeg" in error_msg.lower():
+            return None, "⚠️ مشكلة في تشغيل ffmpeg على السيرفر"
+        return None, f"❌ خطأ: {error_msg[:100]}"
 
 # ===================== أوامر البوت =====================
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
