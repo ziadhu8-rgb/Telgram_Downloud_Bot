@@ -71,7 +71,7 @@ def download_media(url, media_type='video'):
         'prefer_insecure': True,
         'sleep_interval': 5,
         'max_sleep_interval': 10,
-        'proxy': 'http://196.204.80.105:1981',
+        'proxy': 'http://197.164.101.10:1981',
         'headers': {
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         },
